@@ -1,0 +1,8 @@
+= Chained builds in openshift
+Code for my Chained build blog in OpenShift 3
+
+There is 3 examples:
+
+* Using openshift/s2i-wildfly image as builder and jboss/wildfly as runtime image
+* Using jorgemoralespou/s2i-java to build a gradle application and registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift to run it
+* Using openshift-s2i/go to build your application and scratch to run it
