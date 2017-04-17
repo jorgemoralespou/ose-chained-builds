@@ -1,13 +1,14 @@
 oc new-project go-scratch
-oc new-build jorgemoralespou/go-s2i:1.6~https://github.com/jorgemoralespou/ose-chained-builds --context-dir=/go-scratch/hello_world --name=builder
+oc import-image jorgemoralespou/s2i-go --confirm
+oc new-build s2i-go~https://github.com/jorgemoralespou/ose-chained-builds --context-dir=/go-scratch/hello_world --name=builder
 
 sleep 1
 
 # watch the logs
 oc logs -f bc/builder --follow
 
-# Generated artifact is located in /wildfly/standalone/deployments/ROOT.war
-oc new-build --name=runtime --docker-image=scratch --source-image=builder --source-image-path=/opt/app-root/src/go/bin/main:. --dockerfile=$'FROM scratch\nCOPY main /main\nEXPOSE 8080\nENTRYPOINT ["/main"]' --strategy=docker
+# Generated artifact is located in /opt/app-root/src/go/src/main/main
+oc new-build --name=runtime --docker-image=scratch --source-image=builder --source-image-path=/opt/app-root/src/go/src/main/main:. --dockerfile=$'FROM scratch\nCOPY main /main\nEXPOSE 8080\nENTRYPOINT ["/main"]' --strategy=docker
 
 sleep 1
 
