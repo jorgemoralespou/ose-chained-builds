@@ -1,4 +1,4 @@
-oc new-project maven-nakedwildfly
+oc new-project maven-jbosswildfly
 oc new-build wildfly~https://github.com/OpenShiftDemos/os-sample-java-web --name=builder
 
 sleep 1
@@ -14,10 +14,10 @@ sleep 1
 oc logs -f bc/runtime --follow
 
 # Deploy and expose the app once built
-oc new-app runtime --name=os-sample-java-web
-oc expose svc/os-sample-java-web
+oc new-app runtime --name=my-application
+oc expose svc/my-application
 
 # Wait for the rollout TODO: There's no liveness and rediness'
 
 # Print the endpoint URL
-echo “Access the service at http://$(oc get route/os-sample-java-web -o jsonpath='{.status.ingress[0].host}')/” 
+echo “Access the service at http://$(oc get route/my-application -o jsonpath='{.status.ingress[0].host}')/” 
