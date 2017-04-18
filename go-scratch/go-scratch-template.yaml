@@ -1,0 +1,231 @@
+apiVersion: v1
+kind: Template
+metadata:
+  name: go-scratch
+objects:
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    labels:
+      build: builder
+    name: builder
+  spec:
+    tags:
+    - from:
+        kind: ImageStreamTag
+        name: builder:latest
+      importPolicy: {}
+      name: latest
+      referencePolicy:
+        type: ""
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    labels:
+      build: runtime
+    name: runtime
+  spec:
+    tags:
+    - from:
+        kind: ImageStreamTag
+        name: runtime:latest
+      generation: null
+      importPolicy: {}
+      name: latest
+      referencePolicy:
+        type: ""
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    name: s2i-go
+  spec:
+    tags:
+    - from:
+        kind: ImageStreamTag
+        name: s2i-go:latest
+      generation: 1
+      importPolicy: {}
+      name: latest
+      referencePolicy:
+        type: Source
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      build: builder
+    name: builder
+  spec:
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: builder:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      contextDir: ${CONTEXT_DIR}
+      git:
+        uri: ${GIT_URI}
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: s2i-go:latest
+      type: Source
+    triggers:
+    - github:
+        secret: WVserghBmHimPsVzlGLA
+      type: GitHub
+    - generic:
+        secret: FFAuzJTXEkhhIHxTdDbn
+      type: Generic
+    - type: ConfigChange
+    - imageChange: {}
+      type: ImageChange
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    labels:
+      build: runtime
+    name: runtime
+  spec:
+    nodeSelector: null
+    output:
+      to:
+        kind: ImageStreamTag
+        name: runtime:latest
+    postCommit: {}
+    resources: {}
+    runPolicy: Serial
+    source:
+      dockerfile: |-
+        FROM scratch
+        COPY main /main
+        EXPOSE 8080
+        ENTRYPOINT ["/main"]
+      images:
+      - from:
+          kind: ImageStreamTag
+          name: builder:latest
+        paths:
+        - destinationDir: .
+          sourcePath: /opt/app-root/src/go/src/main/main
+      type: Dockerfile
+    strategy:
+      dockerStrategy:
+        from:
+          kind: DockerImage
+          name: scratch
+      type: Docker
+    triggers:
+    - github:
+        secret: KVPPPGoWE5Q6WnHAs-YT
+      type: GitHub
+    - generic:
+        secret: YueU4PRQ_-zfTORkrK9y
+      type: Generic
+    - imageChange:
+        from:
+          kind: ImageStreamTag
+          name: builder:latest
+      type: ImageChange
+    - type: ConfigChange
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    labels:
+      app: my-application
+    name: my-application
+  spec:
+    replicas: 1
+    selector:
+      app: my-application
+      deploymentconfig: my-application
+    strategy:
+      activeDeadlineSeconds: 21600
+      resources: {}
+      rollingParams:
+        intervalSeconds: 1
+        maxSurge: 25%
+        maxUnavailable: 25%
+        timeoutSeconds: 600
+        updatePeriodSeconds: 1
+      type: Rolling
+    template:
+      metadata:
+        labels:
+          app: my-application
+          deploymentconfig: my-application
+      spec:
+        containers:
+        - image: runtime
+          imagePullPolicy: Always
+          name: my-application
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        securityContext: {}
+        terminationGracePeriodSeconds: 30
+    test: false
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - my-application
+        from:
+          kind: ImageStreamTag
+          name: runtime:latest
+      type: ImageChange
+- apiVersion: v1
+  kind: Service
+  metadata:
+    labels:
+      app: my-application
+    name: my-application
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      app: my-application
+      deploymentconfig: my-application
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: v1
+  kind: Route
+  metadata:
+    name: my-application
+  spec:
+    host:
+    port:
+      targetPort: 8080-tcp
+    to:
+      kind: Service
+      name: my-application
+      weight: 100
+    wildcardPolicy: None
+parameters:
+- description: The name of the application.
+  displayName: Name
+  name: NAME
+  required: true
+  value:
+- description: GitHub Source Location.
+  displayName: Git Location
+  name: GIT_URI
+  required: true
+  value:
+- description: Git Context Directory.
+  displayName: Git ContextDir
+  name: CONTEXT_DIR
+  required: true
+  value:
